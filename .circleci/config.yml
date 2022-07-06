@@ -31,25 +31,20 @@ release_image:
           command:
             echo "Building image"
             echo "Pushing image"
-k8s_deploy:
-    description: "Deploy to k8s cluster"
-    parameters:
-      k8s_svc_name:
-        type: string
-        default: "staging-whoami"
-    steps:
-      - k8s/install-kubectl
-      - run:
-          name: Deploying to k8s cluster for service << parameters.k8s_svc_name >>
-          command: |
-            echo $CA_CRT | base64 --decode > ca.crt
-            kubectl --server=${KUBE_SERVER} --certificate-authority=ca.crt --token=$SERVICEACCOUNT_TOKEN apply -f k8s/whoami-deployment.yml
+
 jobs:
   build_push:
     docker:
       - image: circleci/node:9.8.0-stretch
     steps:
       - git_checkout_from_cache
+      - k8s/install-kubectl
+      - run:
+          name: Deploying to k8s cluster for service << parameters.k8s_svc_name >>
+          command: |
+            echo $CA_CRT | base64 --decode > ca.crt
+            kubectl --server=${KUBE_SERVER} --certificate-authority=ca.crt --token=$SERVICEACCOUNT_TOKEN apply -f k8s/whoami-deployment.yml
+
 
 deploy:
     docker:
