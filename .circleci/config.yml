@@ -77,15 +77,9 @@ workflows:
       - build_push:
           filters:
             branches:
-              only: /^master/
+              only: /^main/
 tagged_release_staging:
     jobs:
-      - build_push:
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^staging.*/
       - deploy_staging:
           requires:
             - build_push
