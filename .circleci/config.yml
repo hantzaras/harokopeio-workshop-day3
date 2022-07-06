@@ -12,10 +12,6 @@ commands:
             - source-v1-{{ .Branch }}-
             - source-v1-
       - run:
-          command: |
-            ssh-keyscan -H ssh.pythonanywhere.com >> ~/.ssh/known_hosts 
-            ssh $pythonAnywhereUser@ssh.pythonanywhere.com
-      - run:
           name: Fetch git tags
           command: |
             mkdir -p ~/.ssh
