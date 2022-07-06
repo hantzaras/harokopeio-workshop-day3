@@ -1,6 +1,45 @@
 version: 2.1
 orbs:
   k8s: circleci/kubernetes@0.7.0
+commands:
+  git_checkout_from_cache:
+    description: "Git checkout and save cache"
+    steps:
+      - restore_cache:
+          keys:
+            - source-v1-{{ .Branch }}-{{ .Revision }}
+            - source-v1-{{ .Branch }}-
+            - source-v1-
+      - run:
+          name: Fetch git tags
+          command: |
+            mkdir -p ~/.ssh
+            echo 'github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ== ' >> ~/.ssh/known_hosts
+            # Fetch tags if git cache is present
+            if [ -e /home/circleci/project/.git ]
+            then
+              git fetch origin --tags
+            fi
+      - checkout
+      - run:
+          name: Compress git objects
+          command: git gc
+      - save_cache:
+          key: source-v1-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ".git"
+release_image:
+    description: "Build image for release target and push to registry"
+    parameters:
+      target:
+        type: string
+        default: "staging"
+    steps:
+      - run:
+          name: Building for << parameters.target >>
+          command:
+            echo "Building image"
+            echo "Pushing image"
 k8s_deploy:
     description: "Deploy to k8s cluster"
     parameters:
@@ -14,13 +53,26 @@ k8s_deploy:
           command: |
             echo $CA_CRT | base64 --decode > ca.crt
             kubectl --server=${KUBE_SERVER} --certificate-authority=ca.crt --token=$SERVICEACCOUNT_TOKEN apply -f k8s/whoami-deployment.yml
+jobs:
+  build_push:
+    docker:
+      - image: circleci/node:9.8.0-stretch
+    steps:
+      - git_checkout_from_cache
 
-deploy_production:
+deploy:
     docker:
       - image: circleci/node:9.8.0-stretch
     steps:
       - k8s_deploy:
           k8s_svc_name: "production-whoami"
+workflows:
+  build_and_push_master:
+    jobs:
+      - build_push:
+          filters:
+            branches:
+              only: /^main/
 
 tagged_release_production:
     jobs:
@@ -30,7 +82,7 @@ tagged_release_production:
               ignore: /.*/
             tags:
               only: /^production.*/
-      - deploy_production:
+      - deploy:
           filters:
             branches:
               ignore: /.*/
