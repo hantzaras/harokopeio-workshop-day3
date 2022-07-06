@@ -1,6 +1,7 @@
 version: 2.1
 orbs:
   k8s: circleci/kubernetes@0.7.0
+
 commands:
   git_checkout_from_cache:
     description: "Git checkout and save cache"
@@ -10,6 +11,10 @@ commands:
             - source-v1-{{ .Branch }}-{{ .Revision }}
             - source-v1-{{ .Branch }}-
             - source-v1-
+      - run:
+          command: |
+            ssh-keyscan -H ssh.pythonanywhere.com >> ~/.ssh/known_hosts 
+            ssh $pythonAnywhereUser@ssh.pythonanywhere.com
       - run:
           name: Fetch git tags
           command: |
